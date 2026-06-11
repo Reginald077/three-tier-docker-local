@@ -1,0 +1,52 @@
+services:
+
+  db:
+    image: mysql:8.0
+    container_name: db
+    restart: always
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: webappdb
+      MYSQL_USER: webapp
+      MYSQL_PASSWORD: webapppassword
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app-tier:
+    build:
+      context: ./app-tier
+      dockerfile: Dockerfile
+    container_name: app-tier
+    restart: always
+    environment:
+      DB_HOST: db
+      DB_USER: webapp
+      DB_PWD: webapppassword
+      DB_DATABASE: webappdb
+    ports:
+      - "4000:4000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web-tier:
+    build:
+      context: ./web-tier
+      dockerfile: Dockerfile
+    container_name: web-tier
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - app-tier
+
+volumes:
+  db_data:
